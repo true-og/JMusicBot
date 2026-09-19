@@ -1,6 +1,6 @@
 # Setup Guide
 
-This guide covers the normal non-Docker setup path and the main configuration points that matter on this fork.
+This guide covers the normal setup path and the main configuration points that matter on this fork.
 
 ## Prerequisites
 
@@ -61,7 +61,7 @@ ytvisitordata = "VISITOR_DATA_HERE"
 Build:
 
 ```bash
-mvn clean package
+./mvnw clean package
 ```
 
 Run:
@@ -165,7 +165,7 @@ Personal member reports are self-only unless the requester has Manage Server. Sc
 
 ## Windows Note
 
-If you run the bot directly on Windows rather than in Docker, install Java first and consider a service wrapper such as [NSSM](http://nssm.cc/) if you want it to run in the background.
+If you run the bot on Windows, install Java first and consider a service wrapper such as [NSSM](http://nssm.cc/) if you want it to run in the background.
 
 ## Related Fork Context
 

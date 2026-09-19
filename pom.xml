@@ -203,20 +203,17 @@
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
             <artifactId>selenium-java</artifactId>
-            <version>4.47.0</version>
+            <version>4.49.0</version>
             <!-- https://github.com/SeleniumHQ/selenium/issues/13791 -->
+            <!-- selenium-java 4.49.0 ships CDP v151/v152/v153; keep only the one matching the installed Chromium -->
             <exclusions>
                 <exclusion>
                     <groupId>org.seleniumhq.selenium</groupId>
-                    <artifactId>selenium-devtools-v85</artifactId>
+                    <artifactId>selenium-devtools-v151</artifactId>
                 </exclusion>
                 <exclusion>
                     <groupId>org.seleniumhq.selenium</groupId>
-                    <artifactId>selenium-devtools-v129</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.seleniumhq.selenium</groupId>
-                    <artifactId>selenium-devtools-v130</artifactId>
+                    <artifactId>selenium-devtools-v152</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -274,6 +271,7 @@
                             </includes>
                         </artifactSet>
                         <transformers>
+                            <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
                                 <resource>reference.conf</resource>
                             </transformer>

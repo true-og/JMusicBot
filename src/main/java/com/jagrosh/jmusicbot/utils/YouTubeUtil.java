@@ -27,12 +27,16 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.zip.GZIPInputStream;
 import java.util.List;
 import java.util.logging.Level;
 
@@ -266,31 +270,20 @@ public class YouTubeUtil {
                             if (req == null) continue;
                             String url = req.optString("url", "");
                             if (url.contains("/youtubei/v1/player")) {
-                                String postData = req.optString("postData", null);
+                                String postData = decodePostData(req);
 
-                                // In Chrome 130+, request payload may be in postDataEntries as Base64 bytes
-                                if ((postData == null || postData.isEmpty()) && req.has("postDataEntries")) {
-                                    org.json.JSONArray entries = req.optJSONArray("postDataEntries");
-                                    if (entries != null) {
-                                        StringBuilder sb = new StringBuilder();
-                                        for (int i = 0; i < entries.length(); i++) {
-                                            JSONObject entryObj = entries.optJSONObject(i);
-                                            if (entryObj != null && entryObj.has("bytes")) {
-                                                try {
-                                                    byte[] decoded = java.util.Base64.getDecoder().decode(entryObj.getString("bytes"));
-                                                    sb.append(new String(decoded, StandardCharsets.UTF_8));
-                                                } catch (Exception ignored) {}
-                                            }
-                                        }
-                                        if (sb.length() > 0) {
-                                            postData = sb.toString();
-                                        }
-                                    }
+                                if (postData == null || postData.isEmpty()) {
+                                    LOGGER.warn("Saw YouTube player request without a readable body, waiting for another...");
+                                    continue;
                                 }
 
-                                if (postData == null || postData.isEmpty()) continue;
-
-                                JSONObject body = new JSONObject(postData);
+                                JSONObject body;
+                                try {
+                                    body = new JSONObject(postData);
+                                } catch (Exception e) {
+                                    LOGGER.warn("YouTube player request body is not JSON ({}), waiting for another...", e.getMessage());
+                                    continue;
+                                }
 
                                 String visitorData = null;
                                 if (body.has("context") && body.getJSONObject("context").has("client")) {
@@ -356,6 +349,44 @@ public class YouTubeUtil {
             if (headless)
                 driver.quit();
         }
+    }
+
+    /**
+     * Extracts the request body of a captured Network.requestWillBeSent event.
+     * Prefers the raw Base64 postDataEntries (Chrome 130+) over the lossy postData string,
+     * and transparently gunzips the body when the client sent it with Content-Encoding: gzip
+     * (YouTube web client 2.20260918+ compresses the /youtubei/v1/player request).
+     */
+    private static String decodePostData(JSONObject req) {
+        byte[] raw = null;
+        org.json.JSONArray entries = req.optJSONArray("postDataEntries");
+        if (entries != null) {
+            ByteArrayOutputStream buf = new ByteArrayOutputStream();
+            for (int i = 0; i < entries.length(); i++) {
+                JSONObject entryObj = entries.optJSONObject(i);
+                if (entryObj != null && entryObj.has("bytes")) {
+                    try {
+                        buf.write(java.util.Base64.getDecoder().decode(entryObj.getString("bytes")));
+                    } catch (Exception ignored) {}
+                }
+            }
+            if (buf.size() > 0) raw = buf.toByteArray();
+        }
+        if (raw == null) {
+            String postData = req.optString("postData", null);
+            if (postData == null || postData.isEmpty()) return null;
+            raw = postData.getBytes(StandardCharsets.ISO_8859_1);
+        }
+
+        if (raw.length > 2 && (raw[0] & 0xff) == 0x1f && (raw[1] & 0xff) == 0x8b) {
+            try (GZIPInputStream gz = new GZIPInputStream(new ByteArrayInputStream(raw))) {
+                raw = gz.readAllBytes();
+            } catch (IOException e) {
+                LOGGER.warn("Failed to gunzip YouTube player request body: {}", e.getMessage());
+                return null;
+            }
+        }
+        return new String(raw, StandardCharsets.UTF_8);
     }
 
     private static void saveDebugPage(WebDriver driver) {

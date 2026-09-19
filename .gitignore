@@ -6,4 +6,4 @@
 *.txt
 nb*.xml
 dockerfile
-.*
+.*!.mvn/

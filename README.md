@@ -1,35 +1,31 @@
 <img align="right" src="https://i.imgur.com/zrE80HY.png" height="200" width="200">
 
-# JMusicBot Fork
+# JMusicBot (TrueOG Network fork)
 
-A self-hosted Discord music bot fork based on JMusicBot, updated to keep working on modern Discord and JDA versions.
+A self-hosted Discord music bot, forked by the [TrueOG Network](https://true-og.net) from [chrisb09/MusicBot](https://github.com/chrisb09/MusicBot), which is in turn a modernised fork of [jagrosh/MusicBot](https://github.com/jagrosh/MusicBot).
 
-This repository keeps the bot practical to run today, while also adding fork-specific features such as status messages and playback analytics logging. Possibly more.
+The upstream fork keeps the bot working on current Discord, JDA, and YouTube; this fork keeps it running on TrueOG's infrastructure.
 
-Also, we somewhat regularly bump  [lavaplayer](https://mvnrepository.com/artifact/dev.arbjerg/lavaplayer)/[lavalink](https://maven.lavalink.dev/#/releases/dev/lavalink/youtube/common) to their new versions. I will try to update this automatically in the future.
+## TrueOG Network Fork Changes
 
-## Demo
+- Maven Wrapper (`./mvnw`) so builds use a pinned Maven version instead of whatever is installed
+- Selenium bumped to 4.49.0 with the CDP v153 devtools module, so YouTube PO-token extraction works with current Chromium
+- `maven-shade-plugin` now merges `META-INF/services`, so bundled `CdpInfo` (and other SPI) registrations are no longer silently dropped from the fat jar
+- YouTube PO-token capture handles the gzip-compressed `/youtubei/v1/player` request body that YouTube web client 2.20260918+ sends, and logs a warning instead of silently timing out when the body cannot be parsed
 
-Temporary invite: [discord.gg/4cp9CvjwaW](https://discord.gg/4cp9CvjwaW)  
-Permanent invite: [discord.gg/hK95396uB3](https://discord.gg/hK95396uB3)
+## Inherited From Upstream (chrisb09)
 
-## What This Fork Adds
-- Make it work again, through:
-    - JDA 6 support and current dependency updates
-    - DAVE voice encryption support for current Discord voice requirements
-    - Optional YouTube account login support
-    - Optional YouTube PO token and visitor-data support
-- New niche features, such as:
-    - Optional per-channel playback status message
-    - Optional JDBC/SQLite playback analytics logging
-- Basic QoL improvements, such as:
-    - Docker image and container-friendly deployment path
+- JDA 6 support and current dependency updates
+- DAVE voice encryption support for current Discord voice requirements
+- Optional YouTube account login, PO token, and visitor-data support
+- Optional per-channel playback status message
+- Optional JDBC/SQLite playback analytics logging
+- Regular [lavaplayer](https://mvnrepository.com/artifact/dev.arbjerg/lavaplayer)/[lavalink](https://maven.lavalink.dev/#/releases/dev/lavalink/youtube/common) bumps
 
 ## Quick Links
 
-- Fork changes and version notes: [docs/fork-changelog.md](/docs/fork-changelog.md)
 - Setup guide: [docs/setup.md](/docs/setup.md)
-- Docker usage: [docs/docker.md](/docs/docker.md)
+- Upstream fork changelog: [docs/fork-changelog.md](/docs/fork-changelog.md)
 
 ## Features
 
@@ -63,44 +59,40 @@ Formats:
 - AAC streams
 - Stream playlists such as M3U and PLS
 
-## Setup Notes
+## Building
 
-If you only need the essentials:
+```bash
+./mvnw clean package
+```
+
+The runnable jar is written to `target/JMusicBot-<version>-All.jar`.
+
+## Setup Notes
 
 1. Create a Discord bot and get its token, see [here](https://jmusicbot.com/getting-a-bot-token/).
 2. Enable the `MESSAGE_CONTENT` intent in the Discord Developer Portal [here](https://discord.com/developers/applications) ([Wiki link](https://jda.wiki/using-jda/gateway-intents-and-member-cache-policy/)).
 3. Configure `config.txt`.
-4. Run the jar directly or use Docker.
+4. Run the jar: `java -Dnogui=true -jar target/JMusicBot-<version>-All.jar`
 
 For the detailed version, see [docs/setup.md](/docs/setup.md).
 
-## Docker
+## YouTube Playback
 
-A Docker image is published here: [docker.io/chrisb09/jmusicbot](https://hub.docker.com/r/chrisb09/jmusicbot)
+YouTube requires a PO token, which the bot obtains at startup by driving a headless Chromium through Selenium. Chromium must be installed, and the bundled Selenium CDP module must match the installed Chromium major version (currently v153 — see `pom.xml`). If Chromium is upgraded past that, bump `selenium-java` and the `selenium-devtools-vNNN` exclusions in `pom.xml` and rebuild.
 
-For compose examples and deployment notes, see [docs/docker.md](/docs/docker.md).
-
-## YouTube Login
-
-This fork supports Google account login for YouTube playback workarounds.
-
-Enable:
+Google account login is also supported as a fallback:
 
 ```conf
 youtubeoauth2=true
 ```
 
-Do not use your main Google account. Use a burner or otherwise disposable account instead.
-
-More details are in [docs/setup.md](/docs/setup.md).
-
-If you use PO tokens or visitor data for YouTube, those details are also covered in [docs/setup.md](/docs/setup.md).
+Do not use your main Google account. Use a burner or otherwise disposable account instead. Details are in [docs/setup.md](/docs/setup.md).
 
 ## DAVE / Voice Encryption
 
-Discord currently requires DAVE for voice on modern API versions. This fork configures `libdave-jvm` during startup and bundles native binaries for common Linux, Windows, and macOS targets.
+Discord requires DAVE for voice on modern API versions. The bot configures `libdave-jvm` during startup and bundles native binaries for common Linux, Windows, and macOS targets.
 
-If you deploy on an unsupported architecture, add the matching native dependency in [pom.xml](/pom.xml). You probably need to build the library from source for your architecture, so have fun with that.
+If you deploy on an unsupported architecture, add the matching native dependency in [pom.xml](/pom.xml).
 
 ## Upstream And Related Work
 
@@ -109,16 +101,3 @@ This fork incorporates ideas and patches related to:
 - [PR-1670](https://github.com/jagrosh/MusicBot/pull/1670)
 - [PR-1703](https://github.com/jagrosh/MusicBot/pull/1703)
 - [PR-1772](https://github.com/jagrosh/MusicBot/pull/1772)
-
-If this fork does not fit your needs, another fork you may want to inspect is [SeVile/MusicBot](https://github.com/SeVile/MusicBot).
-
-## Questions And Contributions
-
-If you run into issues, please include:
-
-- the version you are running
-- whether you are using Docker or the jar directly
-- relevant config changes
-- relevant logs
-
-Fork-specific version notes live in [docs/fork-changelog.md](/docs/fork-changelog.md), which should help with troubleshooting and migration as the fork evolves.
